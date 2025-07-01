@@ -20,13 +20,16 @@ import com.example.bibletest.databinding.ActivityMainBinding
 import java.io.InputStreamReader
 import com.google.gson.Gson
 import androidx.core.content.edit
-
+import androidx.core.content.ContextCompat
+import android.text.style.ForegroundColorSpan
 
 class MainActivity : AppCompatActivity() {
 
     var selectedBook: String? = null
     var selectedChapter: Int? = null
     var selectedVerse: Int? = null
+
+    var isParagraphMode = true // Default to verse-by-verse mode
 
     val highlightedVerses = mutableSetOf<Triple<String, Int, Int>>()
 
@@ -62,6 +65,11 @@ class MainActivity : AppCompatActivity() {
         selectedChapter = chapter
         selectedVerse = scrollToVerse
 
+        //colors from our colors.xml file
+        val verseTextColor = ContextCompat.getColor(this, R.color.verse_text_color)
+        val verseBackgroundColor = ContextCompat.getColor(this, R.color.verse_background_color)
+        val redLetterColor = ContextCompat.getColor(this, R.color.red_letter_color)
+
         // Chapter title set here
         val chapterTitle = findViewById<TextView>(R.id.chapter_title)
         chapterTitle.text = getString(R.string.chapter_display, bookName, chapter)
@@ -92,11 +100,81 @@ class MainActivity : AppCompatActivity() {
 
         // generate the clickable in underlineable verses
         for (v in versesInChapter) {
-            val verseLabel = "[${v.verse}] "
-            val verseText = "${v.text}\n\n"
+            var text = v.text
+
+            // --- Paragraph breaks if present ---
+            val endsParagraph = text.contains("\u00B6") // ¶ symbol
+            text = text.replace("\u00B6", "")           // Clean from text
+
+            // --- Handle red-letter markers (multiple) ---
+            val redRanges = mutableListOf<IntRange>()
+            val cleanTextBuilder = StringBuilder()
+            var i = 0
+            var inRed = false
+            var redStart = 0
+
+            while (i < text.length) {
+                when (text[i]) {
+                    '\u2039' -> {
+                        inRed = true
+                        redStart = cleanTextBuilder.length
+                    }
+                    '\u203a' -> {
+                        if (inRed) {
+                            val redEnd = cleanTextBuilder.length
+                            redRanges.add(redStart until redEnd)
+                            inRed = false
+                        }
+                    }
+                    else -> {
+                        cleanTextBuilder.append(text[i])
+                    }
+                }
+                i++
+            }
+
+            text = cleanTextBuilder.toString()
+
+
             val start = builder.length
-            builder.append(verseLabel).append(verseText)
-            val end = builder.length
+
+            if (!isParagraphMode) {
+                // Verse-by-verse mode with [x]
+                builder.append("[${v.verse}] ")
+            } else {
+                // Paragraph mode: small superscript verse number
+                val verseStr = v.verse.toString()
+                builder.append(verseStr)
+                builder.setSpan(
+                    android.text.style.RelativeSizeSpan(0.6f),
+                    builder.length - verseStr.length,
+                    builder.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                builder.setSpan(
+                    android.text.style.SuperscriptSpan(),
+                    builder.length - verseStr.length,
+                    builder.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                builder.append(" ")
+            }
+
+            // Append main verse text
+            val verseStart = builder.length
+            builder.append(text)
+            val verseEnd = builder.length
+
+            for (range in redRanges) {
+                builder.setSpan(
+                    android.text.style.ForegroundColorSpan(redLetterColor),
+                    verseStart + range.first,
+                    verseStart + range.last + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+
+
 
             // Clickable span toggling underline on this verse
             val clickableSpan = object : ClickableSpan() {
@@ -105,29 +183,29 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun updateDrawState(ds: android.text.TextPaint) {
-                    super.updateDrawState(ds)
                     ds.isUnderlineText = false     // disable automatic underline
-                    ds.color = Color.BLACK         // make it plain black
                 }
             }
-            builder.setSpan(clickableSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            builder.setSpan(clickableSpan, start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
             // Apply underline if this verse is highlighted or is the selectedVerse
             if (highlightedVerses.contains(Triple(bookName, chapter, v.verse)) || (tempHighlight && v.verse == selectedVerse)) {
                 builder.setSpan(
                     UnderlineSpan(),
                     start,
-                    end,
+                    builder.length,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
+
+            builder.append(if (endsParagraph || !isParagraphMode) "\n\n" else " ")
         }
         // textView and scrollView get set to all the variables below including the builder which we just built above
         val textView = findViewById<TextView>(R.id.verse_text_view)
         val scrollView = findViewById<ScrollView>(R.id.verse_scroll_view)
 
-        textView.setTextColor(Color.BLACK)
-        textView.setBackgroundColor(Color.WHITE)
+        textView.setTextColor(verseTextColor)
+        textView.setBackgroundColor(verseBackgroundColor)
         textView.text = builder
         textView.movementMethod = LinkMovementMethod.getInstance()
         textView.highlightColor = Color.TRANSPARENT
@@ -135,32 +213,21 @@ class MainActivity : AppCompatActivity() {
         textView.isFocusable = true
 
         if (selectedVerse != null) {
-            scrollView.post {
-                val layout = textView.layout
-                if (layout != null) {
-                    val lineStart = builder.indexOf("[$selectedVerse]")
-                    val line = layout.getLineForOffset(lineStart)
-                    val y = layout.getLineTop(line)
-                    scrollView.smoothScrollTo(0, y)
-                }
-            }
-        }
-
-        if (selectedVerse != null) {
             ignoreNextScroll = true  // <-- set this flag BEFORE programmatic scroll
             scrollView.post {
                 val layout = textView.layout
                 if (layout != null) {
                     val lineStart = builder.indexOf("[$selectedVerse]")
-                    val line = layout.getLineForOffset(lineStart)
-                    val y = layout.getLineTop(line)
-                    scrollView.smoothScrollTo(0, y)
+                    if (lineStart >= 0) {
+                        val line = layout.getLineForOffset(lineStart)
+                        val y = layout.getLineTop(line)
+                        scrollView.smoothScrollTo(0, y)
+                    }
                 }
             }
         }
         //save to shared preferences
         saveLastRead(bookName, chapter, scrollToVerse)
-
     }
     //lose the drawer and collapse the lists inside of it
     fun closeDrawer() {
