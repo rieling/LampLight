@@ -3,6 +3,7 @@ package com.example.bibletest
 import android.graphics.Color
 import android.os.Bundle
 import android.text.Highlights
+import android.text.Layout
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.method.LinkMovementMethod
@@ -29,18 +30,19 @@ class MainActivity : AppCompatActivity() {
 
     val highlightedVerses = mutableSetOf<Triple<String, Int, Int>>()
 
-    private var ignoreNextScroll = false
+    private var ignoreNextScroll = false // Used to avoid looped triggering of scroll listeners
 
     // View binding object gives access to all views in activity_main.xml and included layouts
     private lateinit var binding: ActivityMainBinding
 
     // Drawer layout and RecyclerView for your custom drawer (books list)
     private lateinit var drawerLayout: DrawerLayout
-    private lateinit var drawerRecyclerView: RecyclerView
+    private lateinit var drawerRecyclerView: RecyclerView     // Recycler list of books
 
     // This holds your parsed KJV Bible data
     private lateinit var kjvData: BibleData
 
+    // Saves the user's current book/chapter/verse into local storage (SharedPreferences).
     private fun saveLastRead(book: String, chapter: Int, verse: Int?) {
         val prefs = getSharedPreferences("bible_prefs", MODE_PRIVATE)
         prefs.edit {
@@ -54,17 +56,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // builds and styles the verse text based on chapter/verse.
     fun displayChapter(bookName: String, chapter: Int, scrollToVerse: Int?, tempHighlight: Boolean = true) {
         selectedBook = bookName
         selectedChapter = chapter
         selectedVerse = scrollToVerse
 
+        // Chapter title set here
         val chapterTitle = findViewById<TextView>(R.id.chapter_title)
         chapterTitle.text = getString(R.string.chapter_display, bookName, chapter)
 
+        // the variable that holds the verses
         val versesInChapter = kjvData.verses.filter { it.bookName == bookName && it.chapter == chapter }
         val builder = SpannableStringBuilder()
 
+        // Create and style the header
+        val bookTitle = "$bookName\n"
+        val chapterNumber = "$chapter\n"
+
+        // Append book name (smaller and less prominent)
+        val bookStart = builder.length
+        builder.append(bookTitle)
+        val bookEnd = builder.length
+        builder.setSpan(android.text.style.RelativeSizeSpan(1.2f), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.NORMAL), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.setSpan(android.text.style.AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        // Append chapter number (big and bold)
+        val chapterStart = builder.length
+        builder.append(chapterNumber)
+        val chapterEnd = builder.length
+        builder.setSpan(android.text.style.RelativeSizeSpan(6.0f), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.setSpan(android.text.style.AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        // generate the clickable in underlineable verses
         for (v in versesInChapter) {
             val verseLabel = "[${v.verse}] "
             val verseText = "${v.text}\n\n"
@@ -96,7 +122,7 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
-
+        // textView and scrollView get set to all the variables below including the builder which we just built above
         val textView = findViewById<TextView>(R.id.verse_text_view)
         val scrollView = findViewById<ScrollView>(R.id.verse_scroll_view)
 
@@ -132,11 +158,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
+        //save to shared preferences
         saveLastRead(bookName, chapter, scrollToVerse)
 
     }
-
+    //lose the drawer and collapse the lists inside of it
     fun closeDrawer() {
         drawerLayout.closeDrawers()
         // Delay collapse until drawer is actually closed
@@ -152,7 +178,7 @@ class MainActivity : AppCompatActivity() {
             override fun onDrawerStateChanged(newState: Int) {}
         })
     }
-
+    // temporarily underline verse that was selected
     fun toggleVerseHighlight(verseNumber: Int) {
         val key = Triple(selectedBook ?: return, selectedChapter ?: return, verseNumber)
         if (highlightedVerses.contains(key)) {
@@ -167,6 +193,7 @@ class MainActivity : AppCompatActivity() {
         (drawerRecyclerView.adapter as? BookAdapter)?.rebuildList()
     }
 
+    // navigation button code
     fun goToPreviousChapter() {
         val currentBook = selectedBook ?: return
         val currentChapter = selectedChapter ?: return
@@ -235,15 +262,16 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // clear button
         findViewById<TextView>(R.id.clear_highlights).setOnClickListener {
             highlightedVerses.clear()
             displayChapter(selectedBook ?: return@setOnClickListener, selectedChapter ?: return@setOnClickListener, null)
         }
-
+        //scroll to the verse selected
         var lastScrollY = 0
 
         val scrollView = findViewById<ScrollView>(R.id.verse_scroll_view)
-
+        // clear the temp highlighted verses
         scrollView.viewTreeObserver.addOnScrollChangedListener {
             if (ignoreNextScroll) {
                 ignoreNextScroll = false  // ignore this scroll event caused by programmatic scrolling
@@ -254,7 +282,7 @@ class MainActivity : AppCompatActivity() {
                 displayChapter(selectedBook ?: return@addOnScrollChangedListener, selectedChapter ?: return@addOnScrollChangedListener, null)
             }
         }
-
+        //display the navigation bar when scrolling up or when at the bottom of a chapter
         val bottomBar = findViewById<View>(R.id.bottom_navigation)
 
         scrollView.viewTreeObserver.addOnScrollChangedListener {
