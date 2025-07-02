@@ -1,6 +1,7 @@
 package com.example.bibletest
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.text.Highlights
 import android.text.Layout
@@ -59,6 +60,114 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    data class ParsedVerseText(
+        val text: String,
+        val redRanges: List<IntRange>,
+        val supleRanges: List<IntRange>,
+        val endsParagraph: Boolean
+    )
+
+    fun parseVerseText(raw: String): ParsedVerseText {
+        val builder = StringBuilder()
+        val redRanges = mutableListOf<IntRange>()
+        val supleRanges = mutableListOf<IntRange>()
+
+
+        var inRed = false
+        var redStart = 0
+        var inBracket = false
+        var bracketStart = 0
+
+        var endsParagraph = raw.contains('\u00B6')
+
+        var i = 0
+        while (i < raw.length) {
+            when (raw[i]) {
+                '\u2039' -> { // ‹
+                    inRed = true
+                    redStart = builder.length
+                    i++
+                }
+
+                '\u203a' -> { // ›
+                    if (inRed) {
+                        redRanges.add(redStart until builder.length)
+                        inRed = false
+                    }
+                    i++
+
+                    //skip any spaces while adding them back after you've checked
+                    var hadSpace = false
+                    while (i < raw.length && raw[i].isWhitespace()) {
+                        hadSpace = true
+                        i++
+                    }
+                    if (hadSpace) builder.append(" ")
+
+                    // If next non-space char is [, treat bracketed text as red
+                    if (i < raw.length && raw[i] == '[') {
+                        val bracketStart = builder.length
+                        i++ // skip [
+
+                        while (i < raw.length && raw[i] != ']') {
+                            builder.append(raw[i])
+                            i++
+                        }
+                        val bracketEnd = builder.length
+                        supleRanges.add(bracketStart until bracketEnd)
+                        redRanges.add(bracketStart until bracketEnd)
+
+                        if (i < raw.length && raw[i] == ']') i++ // skip ]
+                    }
+                }
+
+                '[' -> {
+                    val bracketStart = builder.length
+                    i++ // skip [
+
+                    while (i < raw.length && raw[i] != ']') {
+                        builder.append(raw[i])
+                        i++
+                    }
+
+                    val bracketEnd = builder.length
+                    supleRanges.add(bracketStart until bracketEnd)
+
+                    // After ']', check for ‹ skipping spaces, but preserve space
+                    var lookAhead = i
+                    var hasSpace = false
+                    while (lookAhead < raw.length && raw[lookAhead].isWhitespace()) {
+                        hasSpace = true
+                        lookAhead++
+                    }
+                    if (hasSpace) builder.append(" ")
+                    if (lookAhead < raw.length && raw[lookAhead] == '\u2039') {
+                        redRanges.add(bracketStart until bracketEnd)
+                    }
+
+                    if (i < raw.length && raw[i] == ']') i++ // skip ]
+                }
+
+                '\u00B6' -> {
+                    // Ignore ¶
+                    i++
+                }
+
+                else -> {
+                    builder.append(raw[i])
+                    i++
+                }
+            }
+        }
+
+        return ParsedVerseText(
+            text = builder.toString(),
+            redRanges = redRanges,
+            supleRanges = supleRanges,
+            endsParagraph = endsParagraph
+        )
+    }
+
     // builds and styles the verse text based on chapter/verse.
     fun displayChapter(bookName: String, chapter: Int, scrollToVerse: Int?, tempHighlight: Boolean = true) {
         selectedBook = bookName
@@ -98,43 +207,13 @@ class MainActivity : AppCompatActivity() {
         builder.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         builder.setSpan(android.text.style.AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-        // generate the clickable in underlineable verses
         for (v in versesInChapter) {
-            var text = v.text
 
-            // --- Paragraph breaks if present ---
-            val endsParagraph = text.contains("\u00B6") // ¶ symbol
-            text = text.replace("\u00B6", "")           // Clean from text
-
-            // --- Handle red-letter markers (multiple) ---
-            val redRanges = mutableListOf<IntRange>()
-            val cleanTextBuilder = StringBuilder()
-            var i = 0
-            var inRed = false
-            var redStart = 0
-
-            while (i < text.length) {
-                when (text[i]) {
-                    '\u2039' -> {
-                        inRed = true
-                        redStart = cleanTextBuilder.length
-                    }
-                    '\u203a' -> {
-                        if (inRed) {
-                            val redEnd = cleanTextBuilder.length
-                            redRanges.add(redStart until redEnd)
-                            inRed = false
-                        }
-                    }
-                    else -> {
-                        cleanTextBuilder.append(text[i])
-                    }
-                }
-                i++
-            }
-
-            text = cleanTextBuilder.toString()
-
+            val parsed = parseVerseText(v.text)
+            val text = parsed.text
+            val redRanges = parsed.redRanges
+            val supleRanges = parsed.supleRanges
+            val endsParagraph = parsed.endsParagraph
 
             val start = builder.length
 
@@ -173,6 +252,21 @@ class MainActivity : AppCompatActivity() {
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
+
+            for (range in supleRanges) {
+                val spanStart = verseStart + range.first
+                val spanEnd = verseStart + range.last + 1
+
+                if(spanStart in 0 until builder.length && spanEnd in 0..builder.length && spanStart < spanEnd) {
+                    builder.setSpan(
+                        android.text.style.StyleSpan(Typeface.ITALIC),
+                        verseStart + range.first,
+                        verseStart + range.last + 1,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
+
 
 
 
