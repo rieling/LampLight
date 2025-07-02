@@ -23,6 +23,7 @@ import com.google.gson.Gson
 import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import android.text.style.ForegroundColorSpan
+import android.widget.Toast
 
 class MainActivity : AppCompatActivity() {
 
@@ -428,6 +429,18 @@ class MainActivity : AppCompatActivity() {
             highlightedVerses.clear()
             displayChapter(selectedBook ?: return@setOnClickListener, selectedChapter ?: return@setOnClickListener, null)
         }
+
+        findViewById<View>(R.id.btn_search).setOnClickListener {
+            Toast.makeText(this, "Search clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        findViewById<View>(R.id.btn_settings).setOnClickListener {
+            Toast.makeText(this, "Settings clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        findViewById<View>(R.id.btn_version).setOnClickListener {
+            Toast.makeText(this, "Version selector clicked", Toast.LENGTH_SHORT).show()
+        }
         //scroll to the verse selected
         var lastScrollY = 0
 
@@ -443,6 +456,7 @@ class MainActivity : AppCompatActivity() {
                 displayChapter(selectedBook ?: return@addOnScrollChangedListener, selectedChapter ?: return@addOnScrollChangedListener, null)
             }
         }
+        val topBar = findViewById<View>(R.id.tool_bar)
         //display the navigation bar when scrolling up or when at the bottom of a chapter
         val bottomBar = findViewById<View>(R.id.bottom_navigation)
 
@@ -455,8 +469,10 @@ class MainActivity : AppCompatActivity() {
             val isScrollingUp = scrollY < lastScrollY
 
             if (isAtBottom || isScrollingUp) {
+                topBar.visibility = View.VISIBLE
                 bottomBar.visibility = View.VISIBLE
             } else {
+                topBar.visibility = View.GONE
                 bottomBar.visibility = View.GONE
             }
 
