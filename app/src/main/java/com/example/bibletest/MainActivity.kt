@@ -24,6 +24,7 @@ import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import android.text.style.ForegroundColorSpan
 import android.widget.Toast
+import android.view.ViewTreeObserver
 
 class MainActivity : AppCompatActivity() {
 
@@ -170,46 +171,54 @@ class MainActivity : AppCompatActivity() {
     }
 
     // builds and styles the verse text based on chapter/verse.
-    fun displayChapter(bookName: String, chapter: Int, scrollToVerse: Int?, tempHighlight: Boolean = true) {
+    fun displayChapter(
+        bookName: String,
+        chapter: Int,
+        scrollToVerse: Int?,
+        tempHighlight: Boolean = true
+    ) {
         selectedBook = bookName
         selectedChapter = chapter
         selectedVerse = scrollToVerse
 
-        //colors from our colors.xml file
+        // Colors from colors.xml
         val verseTextColor = ContextCompat.getColor(this, R.color.verse_text_color)
         val verseBackgroundColor = ContextCompat.getColor(this, R.color.verse_background_color)
         val redLetterColor = ContextCompat.getColor(this, R.color.red_letter_color)
 
-        // Chapter title set here
+        // Chapter title
         val chapterTitle = findViewById<TextView>(R.id.chapter_title)
         chapterTitle.text = getString(R.string.chapter_display, bookName, chapter)
 
-        // the variable that holds the verses
+        // Verses in chapter
         val versesInChapter = kjvData.verses.filter { it.bookName == bookName && it.chapter == chapter }
         val builder = SpannableStringBuilder()
 
-        // Create and style the header
+        // Header
         val bookTitle = "$bookName\n"
         val chapterNumber = "$chapter\n"
 
-        // Append book name (smaller and less prominent)
+        // Book name style
         val bookStart = builder.length
         builder.append(bookTitle)
         val bookEnd = builder.length
         builder.setSpan(android.text.style.RelativeSizeSpan(1.2f), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.NORMAL), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.setSpan(android.text.style.StyleSpan(Typeface.NORMAL), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         builder.setSpan(android.text.style.AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-        // Append chapter number (big and bold)
+        // Chapter number style
         val chapterStart = builder.length
         builder.append(chapterNumber)
         val chapterEnd = builder.length
         builder.setSpan(android.text.style.RelativeSizeSpan(6.0f), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.setSpan(android.text.style.StyleSpan(Typeface.BOLD), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         builder.setSpan(android.text.style.AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-        for (v in versesInChapter) {
+        // Track selected verse offsets
+        var selectedVerseStart = -1
+        var selectedVerseEnd = -1
 
+        for (v in versesInChapter) {
             val parsed = parseVerseText(v.text)
             val text = parsed.text
             val redRanges = parsed.redRanges
@@ -219,10 +228,10 @@ class MainActivity : AppCompatActivity() {
             val start = builder.length
 
             if (!isParagraphMode) {
-                // Verse-by-verse mode with [x]
+                // Verse-by-verse with [x]
                 builder.append("[${v.verse}] ")
             } else {
-                // Paragraph mode: small superscript verse number
+                // Paragraph mode: superscript verse number
                 val verseStr = v.verse.toString()
                 builder.append(verseStr)
                 builder.setSpan(
@@ -240,11 +249,18 @@ class MainActivity : AppCompatActivity() {
                 builder.append(" ")
             }
 
-            // Append main verse text
+            // Verse text
             val verseStart = builder.length
             builder.append(text)
             val verseEnd = builder.length
 
+            // Remember selected verse offsets
+            if (v.verse == selectedVerse) {
+                selectedVerseStart = verseStart
+                selectedVerseEnd = verseEnd
+            }
+
+            // Red letters
             for (range in redRanges) {
                 builder.setSpan(
                     android.text.style.ForegroundColorSpan(redLetterColor),
@@ -254,40 +270,37 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
+            // Superscript/italic ranges
             for (range in supleRanges) {
                 val spanStart = verseStart + range.first
                 val spanEnd = verseStart + range.last + 1
-
-                if(spanStart in 0 until builder.length && spanEnd in 0..builder.length && spanStart < spanEnd) {
+                if (spanStart in 0 until builder.length && spanEnd in 0..builder.length && spanStart < spanEnd) {
                     builder.setSpan(
                         android.text.style.StyleSpan(Typeface.ITALIC),
-                        verseStart + range.first,
-                        verseStart + range.last + 1,
+                        spanStart,
+                        spanEnd,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                     )
                 }
             }
 
-
-
-
-            // Clickable span toggling underline on this verse
+            // Clickable span
             val clickableSpan = object : ClickableSpan() {
                 override fun onClick(widget: View) {
                     toggleVerseHighlight(v.verse)
                 }
 
                 override fun updateDrawState(ds: android.text.TextPaint) {
-                    ds.isUnderlineText = false     // disable automatic underline
+                    ds.isUnderlineText = false
                 }
             }
             builder.setSpan(clickableSpan, start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-            // Apply underline if this verse is highlighted or is the selectedVerse
+            // Apply underline if highlighted or tempHighlight
             if (highlightedVerses.contains(Triple(bookName, chapter, v.verse)) || (tempHighlight && v.verse == selectedVerse)) {
                 builder.setSpan(
                     UnderlineSpan(),
-                    start,
+                    start, // use 'start' instead of 'verseStart'
                     builder.length,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
@@ -295,7 +308,8 @@ class MainActivity : AppCompatActivity() {
 
             builder.append(if (endsParagraph || !isParagraphMode) "\n\n" else " ")
         }
-        // textView and scrollView get set to all the variables below including the builder which we just built above
+
+        // Set text
         val textView = findViewById<TextView>(R.id.verse_text_view)
         val scrollView = findViewById<ScrollView>(R.id.verse_scroll_view)
 
@@ -307,23 +321,23 @@ class MainActivity : AppCompatActivity() {
         textView.isClickable = true
         textView.isFocusable = true
 
-        if (selectedVerse != null) {
-            ignoreNextScroll = true  // <-- set this flag BEFORE programmatic scroll
+        // Scroll to selected verse
+        if (selectedVerseStart >= 0) {
+            ignoreNextScroll = true
             scrollView.post {
                 val layout = textView.layout
                 if (layout != null) {
-                    val lineStart = builder.indexOf("[$selectedVerse]")
-                    if (lineStart >= 0) {
-                        val line = layout.getLineForOffset(lineStart)
-                        val y = layout.getLineTop(line)
-                        scrollView.smoothScrollTo(0, y)
-                    }
+                    val line = layout.getLineForOffset(selectedVerseStart)
+                    val y = layout.getLineTop(line)
+                    scrollView.smoothScrollTo(0, y)
                 }
             }
         }
-        //save to shared preferences
+
+        // Save last read
         saveLastRead(bookName, chapter, scrollToVerse)
     }
+
     //lose the drawer and collapse the lists inside of it
     fun closeDrawer() {
         drawerLayout.closeDrawers()
@@ -441,20 +455,20 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btn_version).setOnClickListener {
             Toast.makeText(this, "Version selector clicked", Toast.LENGTH_SHORT).show()
         }
+        val SCROLL_THRESHOLD = 20
         //scroll to the verse selected
         var lastScrollY = 0
 
         val scrollView = findViewById<ScrollView>(R.id.verse_scroll_view)
         // clear the temp highlighted verses
         scrollView.viewTreeObserver.addOnScrollChangedListener {
-            if (ignoreNextScroll) {
-                ignoreNextScroll = false  // ignore this scroll event caused by programmatic scrolling
-                return@addOnScrollChangedListener
-            }
-            if (selectedVerse != null) {
+            val scrollY = scrollView.scrollY
+            if (!ignoreNextScroll && selectedVerse != null && Math.abs(scrollY - lastScrollY) > SCROLL_THRESHOLD) {
                 selectedVerse = null
-                displayChapter(selectedBook ?: return@addOnScrollChangedListener, selectedChapter ?: return@addOnScrollChangedListener, null)
+                displayChapter(selectedBook ?: return@addOnScrollChangedListener,
+                    selectedChapter ?: return@addOnScrollChangedListener, null)
             }
+            lastScrollY = scrollY
         }
         val topBar = findViewById<View>(R.id.tool_bar)
         //display the navigation bar when scrolling up or when at the bottom of a chapter
