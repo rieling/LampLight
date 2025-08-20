@@ -1,5 +1,7 @@
 package com.example.bibletest
 
+import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -23,10 +25,16 @@ import com.google.gson.Gson
 import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import android.text.style.ForegroundColorSpan
+import android.view.MotionEvent
 import android.widget.Toast
 import android.view.ViewTreeObserver
+import android.widget.Button
+import androidx.core.view.GravityCompat
+import com.example.bibletest.VerseRenderer
 
 class MainActivity : AppCompatActivity() {
+
+    private var userScrolling = false
 
     var selectedBook: String? = null
     var selectedChapter: Int? = null
@@ -62,114 +70,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    data class ParsedVerseText(
-        val text: String,
-        val redRanges: List<IntRange>,
-        val supleRanges: List<IntRange>,
-        val endsParagraph: Boolean
-    )
-
-    fun parseVerseText(raw: String): ParsedVerseText {
-        val builder = StringBuilder()
-        val redRanges = mutableListOf<IntRange>()
-        val supleRanges = mutableListOf<IntRange>()
-
-
-        var inRed = false
-        var redStart = 0
-        var inBracket = false
-        var bracketStart = 0
-
-        var endsParagraph = raw.contains('\u00B6')
-
-        var i = 0
-        while (i < raw.length) {
-            when (raw[i]) {
-                '\u2039' -> { // ‹
-                    inRed = true
-                    redStart = builder.length
-                    i++
-                }
-
-                '\u203a' -> { // ›
-                    if (inRed) {
-                        redRanges.add(redStart until builder.length)
-                        inRed = false
-                    }
-                    i++
-
-                    //skip any spaces while adding them back after you've checked
-                    var hadSpace = false
-                    while (i < raw.length && raw[i].isWhitespace()) {
-                        hadSpace = true
-                        i++
-                    }
-                    if (hadSpace) builder.append(" ")
-
-                    // If next non-space char is [, treat bracketed text as red
-                    if (i < raw.length && raw[i] == '[') {
-                        val bracketStart = builder.length
-                        i++ // skip [
-
-                        while (i < raw.length && raw[i] != ']') {
-                            builder.append(raw[i])
-                            i++
-                        }
-                        val bracketEnd = builder.length
-                        supleRanges.add(bracketStart until bracketEnd)
-                        redRanges.add(bracketStart until bracketEnd)
-
-                        if (i < raw.length && raw[i] == ']') i++ // skip ]
-                    }
-                }
-
-                '[' -> {
-                    val bracketStart = builder.length
-                    i++ // skip [
-
-                    while (i < raw.length && raw[i] != ']') {
-                        builder.append(raw[i])
-                        i++
-                    }
-
-                    val bracketEnd = builder.length
-                    supleRanges.add(bracketStart until bracketEnd)
-
-                    // After ']', check for ‹ skipping spaces, but preserve space
-                    var lookAhead = i
-                    var hasSpace = false
-                    while (lookAhead < raw.length && raw[lookAhead].isWhitespace()) {
-                        hasSpace = true
-                        lookAhead++
-                    }
-                    if (hasSpace) builder.append(" ")
-                    if (lookAhead < raw.length && raw[lookAhead] == '\u2039') {
-                        redRanges.add(bracketStart until bracketEnd)
-                    }
-
-                    if (i < raw.length && raw[i] == ']') i++ // skip ]
-                }
-
-                '\u00B6' -> {
-                    // Ignore ¶
-                    i++
-                }
-
-                else -> {
-                    builder.append(raw[i])
-                    i++
-                }
-            }
-        }
-
-        return ParsedVerseText(
-            text = builder.toString(),
-            redRanges = redRanges,
-            supleRanges = supleRanges,
-            endsParagraph = endsParagraph
-        )
-    }
-
     // builds and styles the verse text based on chapter/verse.
     fun displayChapter(
         bookName: String,
@@ -187,127 +87,25 @@ class MainActivity : AppCompatActivity() {
         val redLetterColor = ContextCompat.getColor(this, R.color.red_letter_color)
 
         // Chapter title
-        val chapterTitle = findViewById<TextView>(R.id.chapter_title)
+        val chapterTitle = findViewById<TextView>(R.id.btn_chapter_title)
         chapterTitle.text = getString(R.string.chapter_display, bookName, chapter)
 
         // Verses in chapter
         val versesInChapter = kjvData.verses.filter { it.bookName == bookName && it.chapter == chapter }
-        val builder = SpannableStringBuilder()
 
-        // Header
-        val bookTitle = "$bookName\n"
-        val chapterNumber = "$chapter\n"
+        // --- NEW: Use VerseRenderer to build Spannable ---
+        val renderer = VerseRenderer(
+            context = this,
+            verses = versesInChapter,
+            isParagraphMode = isParagraphMode,
+            highlightedVerses = highlightedVerses,
+            redLetterColor = redLetterColor,
+            tempHighlightVerse = scrollToVerse
+        )
+        val builder = renderer.buildChapterSpannable()
 
-        // Book name style
-        val bookStart = builder.length
-        builder.append(bookTitle)
-        val bookEnd = builder.length
-        builder.setSpan(android.text.style.RelativeSizeSpan(1.2f), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.setSpan(android.text.style.StyleSpan(Typeface.NORMAL), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.setSpan(android.text.style.AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER), bookStart, bookEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-        // Chapter number style
-        val chapterStart = builder.length
-        builder.append(chapterNumber)
-        val chapterEnd = builder.length
-        builder.setSpan(android.text.style.RelativeSizeSpan(6.0f), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.setSpan(android.text.style.StyleSpan(Typeface.BOLD), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.setSpan(android.text.style.AlignmentSpan.Standard(Layout.Alignment.ALIGN_CENTER), chapterStart, chapterEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-        // Track selected verse offsets
-        var selectedVerseStart = -1
-        var selectedVerseEnd = -1
-
-        for (v in versesInChapter) {
-            val parsed = parseVerseText(v.text)
-            val text = parsed.text
-            val redRanges = parsed.redRanges
-            val supleRanges = parsed.supleRanges
-            val endsParagraph = parsed.endsParagraph
-
-            val start = builder.length
-
-            if (!isParagraphMode) {
-                // Verse-by-verse with [x]
-                builder.append("[${v.verse}] ")
-            } else {
-                // Paragraph mode: superscript verse number
-                val verseStr = v.verse.toString()
-                builder.append(verseStr)
-                builder.setSpan(
-                    android.text.style.RelativeSizeSpan(0.6f),
-                    builder.length - verseStr.length,
-                    builder.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                builder.setSpan(
-                    android.text.style.SuperscriptSpan(),
-                    builder.length - verseStr.length,
-                    builder.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                builder.append(" ")
-            }
-
-            // Verse text
-            val verseStart = builder.length
-            builder.append(text)
-            val verseEnd = builder.length
-
-            // Remember selected verse offsets
-            if (v.verse == selectedVerse) {
-                selectedVerseStart = verseStart
-                selectedVerseEnd = verseEnd
-            }
-
-            // Red letters
-            for (range in redRanges) {
-                builder.setSpan(
-                    android.text.style.ForegroundColorSpan(redLetterColor),
-                    verseStart + range.first,
-                    verseStart + range.last + 1,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-
-            // Superscript/italic ranges
-            for (range in supleRanges) {
-                val spanStart = verseStart + range.first
-                val spanEnd = verseStart + range.last + 1
-                if (spanStart in 0 until builder.length && spanEnd in 0..builder.length && spanStart < spanEnd) {
-                    builder.setSpan(
-                        android.text.style.StyleSpan(Typeface.ITALIC),
-                        spanStart,
-                        spanEnd,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-            }
-
-            // Clickable span
-            val clickableSpan = object : ClickableSpan() {
-                override fun onClick(widget: View) {
-                    toggleVerseHighlight(v.verse)
-                }
-
-                override fun updateDrawState(ds: android.text.TextPaint) {
-                    ds.isUnderlineText = false
-                }
-            }
-            builder.setSpan(clickableSpan, start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-            // Apply underline if highlighted or tempHighlight
-            if (highlightedVerses.contains(Triple(bookName, chapter, v.verse)) || (tempHighlight && v.verse == selectedVerse)) {
-                builder.setSpan(
-                    UnderlineSpan(),
-                    start, // use 'start' instead of 'verseStart'
-                    builder.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-
-            builder.append(if (endsParagraph || !isParagraphMode) "\n\n" else " ")
-        }
+        // Remember offsets for scrolling
+        val selectedVerseStart = renderer.selectedVerseStart
 
         // Set text
         val textView = findViewById<TextView>(R.id.verse_text_view)
@@ -331,6 +129,11 @@ class MainActivity : AppCompatActivity() {
                     val y = layout.getLineTop(line)
                     scrollView.smoothScrollTo(0, y)
                 }
+
+                // Delay reset of ignoreNextScroll to allow scroll to complete
+                scrollView.postDelayed({
+                    ignoreNextScroll = false
+                }, 200) // 200ms is usually enough for one-screen scroll
             }
         }
 
@@ -428,9 +231,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun scrollToCurrentBook(bookName: String, chapter: Int) {
+        val recyclerView = findViewById<RecyclerView>(R.id.bible_drawer_list)
+        val adapter = recyclerView.adapter as BookAdapter
+
+        val position = adapter.getBookPosition(bookName)
+        if (position != -1) {
+            adapter.expandBookAt(bookName, chapter) // expand first so RecyclerView has the right items
+            recyclerView.post {
+                recyclerView.scrollToPosition(position)
+            }
+        }
+    }
+
 
 
     // Called when the activity starts
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -449,54 +266,83 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.btn_settings).setOnClickListener {
-            Toast.makeText(this, "Settings clicked", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, FontSettingsActivity::class.java)
+                startActivity(intent)
         }
 
         findViewById<View>(R.id.btn_version).setOnClickListener {
             Toast.makeText(this, "Version selector clicked", Toast.LENGTH_SHORT).show()
         }
-        val SCROLL_THRESHOLD = 20
-        //scroll to the verse selected
-        var lastScrollY = 0
 
         val scrollView = findViewById<ScrollView>(R.id.verse_scroll_view)
-        // clear the temp highlighted verses
-        scrollView.viewTreeObserver.addOnScrollChangedListener {
-            val scrollY = scrollView.scrollY
-            if (!ignoreNextScroll && selectedVerse != null && Math.abs(scrollY - lastScrollY) > SCROLL_THRESHOLD) {
-                selectedVerse = null
-                displayChapter(selectedBook ?: return@addOnScrollChangedListener,
-                    selectedChapter ?: return@addOnScrollChangedListener, null)
-            }
-            lastScrollY = scrollY
-        }
         val topBar = findViewById<View>(R.id.tool_bar)
-        //display the navigation bar when scrolling up or when at the bottom of a chapter
         val bottomBar = findViewById<View>(R.id.bottom_navigation)
 
+        scrollView.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> userScrolling = true
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> userScrolling = false
+            }
+            false
+        }
+
+        var lastScrollYForBars = 0
+        var lastScrollDirectionUp = true
+
         scrollView.viewTreeObserver.addOnScrollChangedListener {
-            val scrollY = scrollView.scrollY
+
+
             val contentHeight = scrollView.getChildAt(0).height
             val scrollViewHeight = scrollView.height
+            val scrollY = scrollView.scrollY
 
+            val isAtTop = scrollY <= 0
             val isAtBottom = scrollY + scrollViewHeight >= contentHeight - 10
-            val isScrollingUp = scrollY < lastScrollY
+            val isScrollingUp = scrollY < lastScrollYForBars
+            val isScrollingDown = scrollY > lastScrollYForBars
 
-            if (isAtBottom || isScrollingUp) {
-                topBar.visibility = View.VISIBLE
-                bottomBar.visibility = View.VISIBLE
-            } else {
-                topBar.visibility = View.GONE
-                bottomBar.visibility = View.GONE
+            // Update last scroll direction
+            lastScrollDirectionUp = isScrollingUp
+
+            // Only clear temp highlight if user is actually scrolling
+            if (!ignoreNextScroll && userScrolling && selectedVerse != null) {
+                selectedVerse = null
+                displayChapter(
+                    selectedBook ?: return@addOnScrollChangedListener,
+                    selectedChapter ?: return@addOnScrollChangedListener,
+                    null
+                )
             }
 
-            lastScrollY = scrollY
+            when {
+                isAtTop -> { // fully at top
+                    topBar.visibility = View.GONE
+                    bottomBar.visibility = View.GONE
+                }
+                isAtBottom || isScrollingUp -> { // scrolling up or at bottom
+                    topBar.visibility = View.VISIBLE
+                    bottomBar.visibility = View.VISIBLE
+                }
+                isScrollingDown && !isAtBottom -> { // scrolling down somewhere in the middle
+                    topBar.visibility = View.GONE
+                    bottomBar.visibility = View.GONE
+                }
+            }
+
+            lastScrollYForBars = scrollY
         }
 
 
-        val chapterTitle = findViewById<TextView>(R.id.chapter_title)
+        val chapterTitle = findViewById<TextView>(R.id.btn_chapter_title)
         val prevChapter = findViewById<TextView>(R.id.prev_chapter)
         val nextChapter = findViewById<TextView>(R.id.next_chapter)
+
+        chapterTitle.setOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
+
+            // Scroll drawer to the right book
+            scrollToCurrentBook(selectedBook ?: return@setOnClickListener, selectedChapter ?: return@setOnClickListener)
+        }
 
         prevChapter.setOnClickListener {
             goToPreviousChapter()

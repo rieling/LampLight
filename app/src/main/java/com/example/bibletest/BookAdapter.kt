@@ -61,6 +61,16 @@ class BookAdapter(
         return result
     }
 
+    fun getBookPosition(bookName: String): Int {
+        return items.indexOfFirst { it is BibleListItem.BookItem && it.name == bookName }
+    }
+
+    fun expandBookAt(bookName: String, chapter: Int) {
+        expandedBooks.add(bookName)
+        expandedChapters.add(bookName to chapter)
+        rebuildList()
+    }
+
     override fun getItemCount(): Int = items.size
 
     override fun getItemViewType(position: Int): Int {
@@ -106,10 +116,6 @@ class BookAdapter(
                     if (expandedChapters.contains(key)) expandedChapters.remove(key)
                     else expandedChapters.add(key)
                     rebuildList()
-                }
-                (holder as ChapterViewHolder).textView.apply {
-                    text = context.getString(R.string.chapter_title, item.chapter)
-                    setTextColor(Color.BLACK)
                 }
             }
             is BibleListItem.VerseItem -> {
