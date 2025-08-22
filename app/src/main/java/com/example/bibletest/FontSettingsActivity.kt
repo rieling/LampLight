@@ -31,8 +31,8 @@ class FontSettingsActivity : AppCompatActivity() {
     private val emptyBibleData = BibleData(Metadata("Empty Bible", "EMPTY"), listOf())
 
     private val prebuiltThemes = listOf(
-        AppTheme("Light", 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFFFF0000.toInt(), 0xFFEEEEEE.toInt(), 0xFFDDDDDD.toInt()),
-        AppTheme("Dark", 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF5555.toInt(), 0xFF222222.toInt(), 0xFF333333.toInt())
+        AppTheme("Light", 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFFFF0000.toInt()),
+        AppTheme("Dark", 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF5555.toInt())
     )
 
     private lateinit var allThemes: MutableList<AppTheme>
@@ -219,9 +219,7 @@ class FontSettingsActivity : AppCompatActivity() {
                     "Custom ${allThemes.size + 1}",
                     0xFFCCCCCC.toInt(),
                     0xFF111111.toInt(),
-                    0xFFFF0000.toInt(),
-                    0xFFAAAAAA.toInt(),
-                    0xFF888888.toInt()
+                    0xFFFF0000.toInt()
                 )
                 allThemes.add(newTheme)
                 showThemeSelector() // reopen dialog with new theme

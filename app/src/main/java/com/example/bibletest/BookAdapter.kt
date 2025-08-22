@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 // Represents different types of items in the list
@@ -26,6 +27,7 @@ class BookAdapter(
     private val expandedChapters = mutableSetOf<Pair<String, Int>>()
 
     private var items: List<BibleListItem> = buildListFromData()
+
 
     fun rebuildList() {
         items = buildListFromData()
@@ -94,10 +96,12 @@ class BookAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val context = holder.itemView.context  // Get context to use getString()
 
+        val theme = SettingsManager.getThemeObject(holder.itemView.context)
+
         when (val item = items[position]) {
             is BibleListItem.BookItem -> {
                 (holder as BookViewHolder).textView.text = item.name
-                holder.itemView.setBackgroundColor(Color.WHITE)
+                holder.itemView.setBackgroundColor(theme.backgroundColor)
                 holder.itemView.setOnClickListener {
                     if (expandedBooks.contains(item.name)) expandedBooks.remove(item.name)
                     else expandedBooks.add(item.name)
@@ -105,21 +109,25 @@ class BookAdapter(
                 }
                 (holder as BookViewHolder).textView.apply {
                     text = item.name
-                    setTextColor(Color.BLACK) // Force text to be black
+                    setTextColor(theme.textColor) // Force text to be black
                 }
             }
             is BibleListItem.ChapterItem -> {
                 (holder as ChapterViewHolder).textView.text = context.getString(R.string.chapter_title, item.chapter)
-                holder.itemView.setBackgroundColor(Color.WHITE)
+                holder.itemView.setBackgroundColor(theme.backgroundColor)
                 holder.itemView.setOnClickListener {
                     val key = item.bookName to item.chapter
                     if (expandedChapters.contains(key)) expandedChapters.remove(key)
                     else expandedChapters.add(key)
                     rebuildList()
                 }
+                (holder as ChapterViewHolder).textView.apply {
+                    text = context.getString(R.string.chapter_title, item.chapter)
+                    setTextColor(theme.textColor) // <-- Add this line
+                }
             }
             is BibleListItem.VerseItem -> {
-                holder.itemView.setBackgroundColor(Color.WHITE)
+                holder.itemView.setBackgroundColor(theme.backgroundColor)
                 val context = holder.itemView.context
                 val activity = context as? MainActivity ?: return
 
@@ -146,7 +154,7 @@ class BookAdapter(
                 }
                 (holder as VerseViewHolder).textView.apply {
                     text = spannable
-                    setTextColor(Color.BLACK)
+                    setTextColor(theme.textColor)
                 }
             }
         }

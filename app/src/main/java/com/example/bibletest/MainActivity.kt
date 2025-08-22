@@ -270,6 +270,8 @@ class MainActivity : AppCompatActivity() {
         val drawerLayout: DrawerLayout = findViewById(R.id.drawer_layout)
         val mainContent: View = findViewById(R.id.main_content)
 
+        val bibleBook: RecyclerView = findViewById(R.id.bible_drawer_list)
+
         val searchicon = ContextCompat.getDrawable(this, R.drawable.ic_search)?.mutate()
         val settingsicon = ContextCompat.getDrawable(this, R.drawable.ic_settings)?.mutate()
         val versionicon = ContextCompat.getDrawable(this, R.drawable.ic_version)?.mutate()
@@ -296,6 +298,8 @@ class MainActivity : AppCompatActivity() {
         settingsicon?.setTint(SettingsManager.getThemeTextColor(this)) // Apply theme color
         versionicon?.setTint(SettingsManager.getThemeTextColor(this))
         versionText.setTextColor(SettingsManager.getThemeTextColor(this))
+
+        bibleBook.setBackgroundColor(SettingsManager.getThemeBackground(this))
 
         btnSearch.setImageDrawable(searchicon)
         btnSettings.setImageDrawable(settingsicon)

@@ -10,9 +10,7 @@ data class AppTheme(
     val name: String,          // Theme name
     val backgroundColor: Int,  // Overall background
     val textColor: Int,        // Verse text color
-    val redLetterColor: Int,   // Color for red letters
-    val toolbarColor: Int,     // Top bar color
-    val bottomNavColor: Int    // Bottom bar color
+    val redLetterColor: Int   // Color for red letters
 )
 
 object SettingsManager {
@@ -25,8 +23,8 @@ object SettingsManager {
     private const val KEY_CUSTOM_THEMES = "custom_themes"
 
     private val prebuiltThemes = listOf(
-        AppTheme("Light", 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFFFF0000.toInt(), 0xFFEEEEEE.toInt(), 0xFFDDDDDD.toInt()),
-        AppTheme("Dark", 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF5555.toInt(), 0xFF222222.toInt(), 0xFF333333.toInt())
+        AppTheme("Light", 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFFFF0000.toInt()),
+        AppTheme("Dark", 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF5555.toInt())
     )
 
     // ---------------- Font & Paragraph ----------------
