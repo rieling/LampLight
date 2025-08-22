@@ -3,80 +3,101 @@
     android:id="@+id/settings_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:background="@android:color/transparent"> <!-- dynamically set in activity -->
 
     <LinearLayout
+        android:id="@+id/settings_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
 
-        <!-- Preview Text -->
+        <!-- Preview -->
         <ScrollView
             android:id="@+id/font_preview_scroll"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
-            android:background="@android:color/darker_gray"
-            android:padding="8dp">
+            android:layout_height="450dp"
+            android:background="@drawable/preview_box">
 
             <TextView
                 android:id="@+id/font_preview_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="its not working if you see this"
+                android:text="Sample preview text"
                 android:textSize="18sp"
                 android:scrollbars="vertical"/>
         </ScrollView>
 
         <!-- Font Size Controls -->
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:paddingTop="16dp">
+            android:paddingTop="16dp"
+            android:weightSum="3">
 
             <Button
                 android:id="@+id/font_size_decrease"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="-" />
+                android:text="-"
+                android:background="@drawable/box_border"
+                android:layout_marginEnd="8dp"/>
 
             <TextView
                 android:id="@+id/font_size_value"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="18"
                 android:textSize="18sp"
-                android:paddingHorizontal="16dp"
-                android:gravity="center" />
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@drawable/box_border"/>
 
             <Button
                 android:id="@+id/font_size_increase"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="+" />
+                android:text="+"
+                android:background="@drawable/box_border"
+                android:layout_marginStart="8dp"/>
         </LinearLayout>
 
-        <!-- Font Selector -->
-        <TextView
-            android:id="@+id/font_selector"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Font: Default"
-            android:textSize="16sp"
-            android:padding="12dp"
-            android:background="?android:attr/selectableItemBackground"
-            android:clickable="true"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp" />
-
-        <!-- Paragraph Mode Toggle -->
+        <!-- Font Selector Box -->
         <LinearLayout
+            android:id="@+id/font_selector_box"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingBottom="16dp">
+            android:padding="12dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/box_border"
+            android:clickable="true">
+
+            <TextView
+                android:id="@+id/font_selector"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Font: Default"
+                android:textSize="16sp"
+                android:gravity="center_vertical"/>
+        </LinearLayout>
+
+        <!-- Paragraph Mode Box -->
+        <LinearLayout
+            android:id="@+id/paragraph_mode_box"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/box_border">
 
             <TextView
                 android:id="@+id/paragraph_mode_label"
@@ -92,21 +113,13 @@
                 android:layout_height="wrap_content"/>
         </LinearLayout>
 
-        <!-- Themes Horizontal RecyclerView -->
-        <TextView
+        <!-- Theme Selector Button -->
+        <Button
+            android:id="@+id/btn_theme_selector"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Themes"
-            android:textStyle="bold"
-            android:paddingBottom="8dp"
-            android:textSize="16sp" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/theme_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:orientation="horizontal"
-            android:scrollbars="horizontal"/>
+            android:text="Select Theme"
+            android:layout_marginTop="8dp" />
 
         <Button
             android:id="@+id/apply_button"
@@ -114,14 +127,5 @@
             android:layout_height="wrap_content"
             android:text="Apply"
             android:layout_marginTop="16dp"/>
-
-
-        <!-- Future settings -->
-        <LinearLayout
-            android:id="@+id/other_settings_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingTop="16dp"/>
     </LinearLayout>
 </ScrollView>

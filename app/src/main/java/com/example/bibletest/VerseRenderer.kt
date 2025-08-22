@@ -13,13 +13,17 @@ import android.text.style.SuperscriptSpan
 import android.text.style.UnderlineSpan
 import android.view.View
 
+// what to look for when parsing text
+// doesn’t just return raw text but also metadata (like which parts are red, which are superscript, etc.).
 data class ParsedVerseText(
-    val text: String,
-    val redRanges: List<IntRange>,
-    val supleRanges: List<IntRange>,
-    val endsParagraph: Boolean
+    val text: String, // builds the cleaned-up text
+    val redRanges: List<IntRange>, // where red letters should go
+    val supleRanges: List<IntRange>, // where superscripts/italics go
+    val endsParagraph: Boolean  // ¶ means "new paragraph"
 )
-
+// This function takes a raw string from your JSON (e.g. "‹Jesus said› [superscript] ¶") and:
+// removes symbols (‹, ›, [ ], ¶)
+// remembers where those symbols used to be, so it can later apply spans
 fun parseVerseText(raw: String): ParsedVerseText {
     val builder = StringBuilder()
     val redRanges = mutableListOf<IntRange>()
@@ -121,18 +125,21 @@ fun parseVerseText(raw: String): ParsedVerseText {
     )
 }
 
+// This is the engine that turns a list of verses into a styled SpannableStringBuilder.
+// That builder is what you set in a TextView later.
 class VerseRenderer(
     private val context: Context,
-    private val verses: List<Verse>,
-    private val isParagraphMode: Boolean,
-    private val highlightedVerses: Set<Triple<String, Int, Int>>,
-    private val redLetterColor: Int,
-    private val tempHighlightVerse: Int?,
-    private val onVerseClick: ((Int) -> Unit)? = null       // callback for click
+    private val verses: List<Verse>, // comes from your BibleData JSON
+    private val isParagraphMode: Boolean, // user setting
+    private val highlightedVerses: Set<Triple<String, Int, Int>>, // (Book, Chapter, Verse)
+    private val redLetterColor: Int, // comes from your theme
+    private val tempHighlightVerse: Int?, // for temporary highlighting
+    private val onVerseClick: ((Int) -> Unit)? = null // callback when clicked
 ) {
 
     var selectedVerseStart: Int = -1
 
+    // This is the main method. It loops through every verse and applies styles.
     fun buildChapterSpannable(): SpannableStringBuilder {
         val builder = SpannableStringBuilder()
 
