@@ -10,7 +10,8 @@ data class AppTheme(
     val name: String,          // Theme name
     val backgroundColor: Int,  // Overall background
     val textColor: Int,        // Verse text color
-    val redLetterColor: Int   // Color for red letters
+    val redLetterColor: Int,   // Color for red letters
+    val borderColor: Int
 )
 
 object SettingsManager {
@@ -23,8 +24,8 @@ object SettingsManager {
     private const val KEY_CUSTOM_THEMES = "custom_themes"
 
     private val prebuiltThemes = listOf(
-        AppTheme("Light", 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFFFF0000.toInt()),
-        AppTheme("Dark", 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF5555.toInt())
+        AppTheme("Light", 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFFFF0000.toInt(), 0x888888FF.toInt()),
+        AppTheme("Dark", 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF5555.toInt(), 0x888888FF.toInt())
     )
 
     // ---------------- Font & Paragraph ----------------
@@ -98,5 +99,5 @@ object SettingsManager {
     fun getThemeBackground(context: Context): Int = getThemeObject(context).backgroundColor
     fun getThemeTextColor(context: Context): Int = getThemeObject(context).textColor
     fun getThemeRedLetterColor(context: Context): Int = getThemeObject(context).redLetterColor
-    // fun getThemeSecondaryBackground(context: Context): Int = getThemeObject(context).secondaryBackground not functioning
+    fun getThemeBorderColor(context: Context): Int = getThemeObject(context).borderColor
 }

@@ -113,19 +113,21 @@
                 android:layout_height="wrap_content"/>
         </LinearLayout>
 
-        <!-- Theme Selector Button -->
-        <Button
-            android:id="@+id/btn_theme_selector"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Select Theme"
-            android:layout_marginTop="8dp" />
+        <!-- Themes RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/theme_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:scrollbars="horizontal"/>
 
         <Button
             android:id="@+id/apply_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Apply"
+            android:background="@drawable/box_border"
             android:layout_marginTop="16dp"/>
     </LinearLayout>
 </ScrollView>
