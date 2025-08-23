@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.graphics.text.LineBreaker
 import android.os.Build
 import android.os.Bundle
@@ -27,6 +28,9 @@ class FontSettingsActivity : AppCompatActivity() {
     private lateinit var paragraphSwitch: Switch
     private lateinit var fontSelector: TextView
     private lateinit var themeSelectorRecycler: RecyclerView // NEW
+
+    private lateinit var fontSelectorBox: LinearLayout
+    private lateinit var paragraphModeBox: LinearLayout
 
     private var fontSize: Float = 18f
     private var paragraphMode: Boolean = true
@@ -53,6 +57,10 @@ class FontSettingsActivity : AppCompatActivity() {
         paragraphSwitch = findViewById(R.id.paragraph_mode_switch)
         fontSelector = findViewById(R.id.font_selector)
         themeSelectorRecycler = findViewById(R.id.theme_recycler_view)
+
+        fontSelectorBox = findViewById(R.id.font_selector_box)
+        paragraphModeBox = findViewById(R.id.paragraph_mode_box)
+
 
         // Load saved settings
         fontSize = SettingsManager.getFontSize(this)
@@ -240,10 +248,20 @@ class FontSettingsActivity : AppCompatActivity() {
 
         val borderDrawable = ContextCompat.getDrawable(this, R.drawable.box_border)?.mutate()
 
+        fun createBorder(color: Int): Drawable? {
+            return ContextCompat.getDrawable(this, R.drawable.box_border)?.mutate()?.apply {
+                setTint(color)
+            }
+        }
+
+        fontSizeValue.background = createBorder(selectedTheme.borderColor)
+        fontSelectorBox.background = createBorder(selectedTheme.borderColor)
+        paragraphModeBox.background = createBorder(selectedTheme.borderColor)
+
         buttons.forEach { btn ->
             btn.background = borderDrawable?.constantState?.newDrawable()?.mutate()
             btn.backgroundTintList = null // <-- THIS removes Material tint
-            btn.setTextColor(selectedTheme.textColor) // Keep your dynamic text color
+            btn.setBackgroundColor(selectedTheme.borderColor) // Keep your dynamic text color
         }
 
     }
@@ -264,6 +282,7 @@ class FontSettingsActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.apply_button).setTextColor(selectedTheme.textColor)
 
+
         val buttons = listOf(
             findViewById<Button>(R.id.font_size_increase),
             findViewById<Button>(R.id.font_size_decrease),
@@ -272,10 +291,20 @@ class FontSettingsActivity : AppCompatActivity() {
 
         val borderDrawable = ContextCompat.getDrawable(this, R.drawable.box_border)?.mutate()
 
+        fun createBorder(color: Int): Drawable? {
+            return ContextCompat.getDrawable(this, R.drawable.box_border)?.mutate()?.apply {
+                setTint(color)
+            }
+        }
+
+        fontSizeValue.background = createBorder(selectedTheme.borderColor)
+        fontSelectorBox.background = createBorder(selectedTheme.borderColor)
+        paragraphModeBox.background = createBorder(selectedTheme.borderColor)
+
         buttons.forEach { btn ->
             btn.background = borderDrawable?.constantState?.newDrawable()?.mutate()
             btn.backgroundTintList = null // <-- THIS removes Material tint
-            btn.setTextColor(selectedTheme.textColor) // Keep your dynamic text color
+            btn.setBackgroundColor(selectedTheme.borderColor) // Keep your dynamic text color
         }
 
     }

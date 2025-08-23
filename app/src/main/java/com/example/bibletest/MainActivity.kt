@@ -308,6 +308,7 @@ class MainActivity : AppCompatActivity() {
         btnSearch.setImageDrawable(searchicon)
         btnSettings.setImageDrawable(settingsicon)
         versionIcon.setImageDrawable(versionicon)
+        //borderBox.setImageDrawable(borderBox)
     }
 
     private fun scrollToCurrentBook(bookName: String, chapter: Int) {
@@ -421,7 +422,7 @@ class MainActivity : AppCompatActivity() {
 
             // Show/hide toolbars depending on scroll
             when {
-                isAtTop -> {
+                isAtTop && !isAtBottom -> {
                     topBar.visibility = View.GONE
                     bottomBar.visibility = View.GONE
                 }
