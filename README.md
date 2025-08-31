@@ -4,9 +4,9 @@ LampLight is a mobile application designed to assist users in referencing and st
 
 ## Features
 
-- **Interlinear Texts**: View original Hebrew alongside English translations.
-- **Study Tools**: Access commentaries and lexicons.
-- **Search Functionality**: Quickly locate verses and topics.
+- **Bible**: Loads specific versions and adds red letters and italics to indicate added words.
+- **Study Tools**: ability to highlight individual verses.
+- **Customizability**: change the theme: background color, text color, red letter color.
 
 ## Tech Stack
 
@@ -28,6 +28,6 @@ git clone https://github.com/rieling/LampLight.git
 
 - Browse scripture texts.
 
-- Use the search bar to find specific verses.
+- Customize the look including font color and text size.
 
-- Access study tools from the navigation menu.
+- highlight and navigate through books with our quick bar on the side of the app.
